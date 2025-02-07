@@ -1,0 +1,167 @@
+from typing import List, Optional
+from pydantic import BaseModel
+
+from database_connection import PostgresDatabaseConnection  # Make sure you have this connection
+
+class ProductData(BaseModel):
+    """Data structure for Product."""
+    product_name: str
+    description: Optional[str] = None  # Description is optional
+    price: float  # Use float for prices
+    quantity_available: int
+    category_id: int  # Foreign key
+    seller_id: int    # Foreign key
+
+    #Validations with pydantic
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "product_name": "Example Product",
+                    "description": "A sample product",
+                    "price": 19.99,
+                    "quantity_available": 100,
+                    "category_id": 1,
+                    "seller_id": 1,
+                }
+            ]
+        }
+    }
+
+class ProductCRUD:
+
+    def __init__(self):
+        self.db_connection = PostgresDatabaseConnection()
+        self.db_connection.connect()
+
+    def _execute_query(self, query: str, values: tuple = None) -> bool: # Better name for the function
+        try:
+            cursor = self.db_connection.connection.cursor()
+            if values:
+                cursor.execute(query, values)
+            else:
+                cursor.execute(query) #For queries without values.
+            self.db_connection.connection.commit()
+            cursor.close()
+            return True #Indicate that the operation was successful.
+        except Exception as e:
+            print(f"Error in database operation: {e}")
+            self.db_connection.connection.rollback() #Revert changes in case of error.
+            return False
+
+    def create(self, data: ProductData) -> Optional[int]:
+        """Creates a new product."""
+        query = """
+            INSERT INTO Product (product_name, description, price, quantity_available, category_id, seller_id)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            RETURNING product_id;
+        """
+        values = (data.product_name, data.description, data.price, data.quantity_available, data.category_id, data.seller_id)
+        try:
+            cursor = self.db_connection.connection.cursor()
+            cursor.execute(query, values)
+            product_id = cursor.fetchone()[0]
+            self.db_connection.connection.commit()
+            cursor.close()
+            return product_id
+        except Exception as e:
+            self.db_connection.connection.rollback()
+            print(f"Error creating product: {e}")
+            return None
+        
+    def update(self, product_id: int, data: ProductData) -> bool:
+        """Updates a product."""
+        query = """
+            UPDATE Product
+            SET product_name = %s, description = %s, price = %s, quantity_available = %s, category_id = %s, seller_id = %s
+            WHERE product_id = %s;
+        """
+        values = (data.product_name, data.description, data.price, data.quantity_available, data.category_id, data.seller_id, product_id)
+        return self._execute_query(query, values)        
+
+    def delete(self, product_id: int) -> bool:
+        """Deletes a product."""
+        query = """
+            DELETE FROM Product
+            WHERE product_id = %s;
+        """
+        return self._execute_query(query, (product_id,))    
+
+    def get_by_id(self, product_id: int) -> Optional[ProductData]:
+        """Gets a product by ID."""
+        query = """
+            SELECT product_name, description, price, quantity_available, category_id, seller_id
+            FROM Product
+            WHERE product_id = %s;
+        """
+        try:
+            cursor = self.db_connection.connection.cursor()
+            cursor.execute(query, (product_id,))
+            product_data = cursor.fetchone()
+            cursor.close()
+            if product_data:
+                return ProductData(*product_data)  # Unpack the results
+            return None #If the product is not found.
+        except Exception as e:
+            print(f"Error getting product by ID: {e}")
+            return None
+
+    def get_all(self) -> List[ProductData]:
+        """Gets all products."""
+        query = """
+            SELECT product_name, description, price, quantity_available, category_id, seller_id
+            FROM Product;
+        """
+        products = []
+        try:
+            cursor = self.db_connection.connection.cursor()
+            cursor.execute(query)
+            product_list = cursor.fetchall()
+            cursor.close()
+            for product in product_list:
+                products.append(ProductData(*product)) #Create ProductData objects for the list.
+            return products
+        except Exception as e:
+            print(f"Error getting all products: {e}")
+            return []
+
+    def get_by_name(self, product_name: str) -> List[ProductData]:
+        """Gets products by name (case-insensitive search)."""
+        query = """
+            SELECT product_name, description, price, quantity_available, category_id, seller_id
+            FROM Product
+            WHERE LOWER(product_name) LIKE LOWER(%s);  -- Case-insensitive comparison
+        """
+        products = []
+        try:
+            cursor = self.db_connection.connection.cursor()
+            cursor.execute(query, ("%" + product_name + "%",)) # Add wildcard % for partial matches.
+            product_list = cursor.fetchall()
+            cursor.close()
+            for product in product_list:
+                products.append(ProductData(*product))
+            return products
+        except Exception as e:
+            print(f"Error getting products by name: {e}")
+            return []
+
+    def get_by_category(self, category_id: int) -> List[ProductData]:
+        """Gets products by category."""
+        query = """
+            SELECT product_name, description, price, quantity_available, category_id, seller_id
+            FROM Product
+            WHERE category_id = %s;
+        """
+        products = []
+        try:
+            cursor = self.db_connection.connection.cursor()
+            cursor.execute(query, (category_id,))
+            product_list = cursor.fetchall()
+            cursor.close()
+            for product in product_list:
+                products.append(ProductData(*product))
+            return products
+        except Exception as e:
+            print(f"Error getting products by category: {e}")
+            return []
+
