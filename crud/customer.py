@@ -1,23 +1,22 @@
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr, validator
+from datetime import date
 
 from database_connection import PostgresDatabaseConnection
 
 class CustomerData(BaseModel):
     """Data structure for Customer."""
     full_name: str
-    email: EmailStr  # Usa EmailStr para validación de emails
+    email: EmailStr
     shipping_address: str
     phone: str
-    registration_date: str  # YYYY-MM-DD format is recommended
-    
+    registration_date: date  # Tipo de dato date
+
     @validator("phone")
     def validate_phone(cls, phone):
-        # Add your phone number validation logic here if needed.
-        # For example, you could check the length or format.
-        # Raise ValueError if the phone number is invalid.
+        # Aquí puedes agregar validación más específica para el número de teléfono
+        # Por ejemplo, longitud, formato, etc.
         return phone
-
 
 class CustomerCRUD:
 
@@ -25,19 +24,19 @@ class CustomerCRUD:
         self.db_connection = PostgresDatabaseConnection()
         self.db_connection.connect()
 
-    def _execute_query(self, query: str, values: tuple = None) -> bool: # Better name for the function
+    def _execute_query(self, query: str, values: tuple = None) -> bool:
         try:
             cursor = self.db_connection.connection.cursor()
             if values:
                 cursor.execute(query, values)
             else:
-                cursor.execute(query) #For queries without values.
+                cursor.execute(query)
             self.db_connection.connection.commit()
             cursor.close()
-            return True #Indicate that the operation was successful.
+            return True
         except Exception as e:
-            print(f"Error in database operation: {e}")
-            self.db_connection.connection.rollback() #Revert changes in case of error.
+            print(f"Error en la operación de la base de datos: {e}")
+            self.db_connection.connection.rollback()
             return False
 
     def create(self, data: CustomerData) -> Optional[int]:
@@ -47,8 +46,7 @@ class CustomerCRUD:
             VALUES (%s, %s, %s, %s, %s)
             RETURNING customer_id;
         """
-        values = (data.full_name, data.email, data.shipping_address, data.phone, data.registration_date)
-
+        values = (data.full_name, data.email, data.shipping_address, data.phone, data.registration_date.strftime('%Y-%m-%d'))  # Formateo de fecha para la BD
         try:
             cursor = self.db_connection.connection.cursor()
             cursor.execute(query, values)
@@ -60,7 +58,6 @@ class CustomerCRUD:
             self.db_connection.connection.rollback()
             print(f"Error creating customer: {e}")
             return None
-
 
     def get_by_id(self, customer_id: int) -> Optional[CustomerData]:
         """Gets a customer by ID."""
@@ -75,8 +72,15 @@ class CustomerCRUD:
             customer_data = cursor.fetchone()
             cursor.close()
             if customer_data:
-                return CustomerData(*customer_data)
-            return None
+                customer_dict = {
+                    "full_name": customer_data[0],
+                    "email": customer_data[1],
+                    "shipping_address": customer_data[2],
+                    "phone": customer_data[3],
+                    "registration_date": customer_data[4] # No es necesario formatear, FastAPI lo hace automáticamente
+                }
+                return CustomerData(**customer_dict)
+            return None  # Retorna None si no se encuentra el cliente
         except Exception as e:
             print(f"Error getting customer by ID: {e}")
             return None
@@ -93,12 +97,19 @@ class CustomerCRUD:
             cursor.execute(query)
             customer_list = cursor.fetchall()
             cursor.close()
-            for customer in customer_list:
-                customers.append(CustomerData(*customer))
+            for customer_data in customer_list:
+                customer_dict = {
+                    "full_name": customer_data[0],
+                    "email": customer_data[1],
+                    "shipping_address": customer_data[2],
+                    "phone": customer_data[3],
+                    "registration_date": customer_data[4] # No es necesario formatear, FastAPI lo hace automáticamente
+                }
+                customers.append(CustomerData(**customer_dict))
             return customers
         except Exception as e:
             print(f"Error getting all customers: {e}")
-            return []
+            return []  # Retorna una lista vacía en caso de error
 
     def update(self, customer_id: int, data: CustomerData) -> bool:
         """Updates a customer."""
@@ -107,7 +118,7 @@ class CustomerCRUD:
             SET full_name = %s, email = %s, shipping_address = %s, phone = %s, registration_date = %s
             WHERE customer_id = %s;
         """
-        values = (data.full_name, data.email, data.shipping_address, data.phone, data.registration_date, customer_id)
+        values = (data.full_name, data.email, data.shipping_address, data.phone, data.registration_date.strftime('%Y-%m-%d'), customer_id)  # Formateo de fecha para la BD
         return self._execute_query(query, values)
 
     def delete(self, customer_id: int) -> bool:
@@ -131,8 +142,15 @@ class CustomerCRUD:
             customer_data = cursor.fetchone()
             cursor.close()
             if customer_data:
-                return CustomerData(*customer_data)
-            return None
+                customer_dict = {
+                    "full_name": customer_data[0],
+                    "email": customer_data[1],
+                    "shipping_address": customer_data[2],
+                    "phone": customer_data[3],
+                    "registration_date": customer_data[4] # No es necesario formatear, FastAPI lo hace automáticamente
+                }
+                return CustomerData(**customer_dict)
+            return None  # Retorna None si no se encuentra el cliente
         except Exception as e:
             print(f"Error getting customer by email: {e}")
             return None
@@ -150,9 +168,31 @@ class CustomerCRUD:
             cursor.execute(query, ("%" + full_name + "%",))  # Wildcard for partial matches
             customer_list = cursor.fetchall()
             cursor.close()
-            for customer in customer_list:
-                customers.append(CustomerData(*customer))
+            for customer_data in customer_list:
+                customer_dict = {
+                    "full_name": customer_data[0],
+                    "email": customer_data[1],
+                    "shipping_address": customer_data[2],
+                    "phone": customer_data[3],
+                    "registration_date": customer_data[4] # No es necesario formatear, FastAPI lo hace automáticamente
+                }
+                customers.append(CustomerData(**customer_dict))
             return customers
         except Exception as e:
             print(f"Error getting customers by name: {e}")
-            return []
+            return []  # Retorna una lista vacía en caso de error
+
+
+# Ejemplo de uso en un endpoint de FastAPI:
+from fastapi import FastAPI, APIRouter
+
+app = FastAPI()
+router = APIRouter()
+customer_crud = CustomerCRUD()
+
+@router.get("/customer/get_by_id/{customer_id}", response_model=CustomerData)
+def get_customer_by_id(customer_id: int):
+    customer = customer_crud.get_by_id(customer_id)
+    return customer  # FastAPI serializa automáticamente el objeto date a ISO 8601
+
+app.include_router(router)

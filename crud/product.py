@@ -12,7 +12,6 @@ class ProductData(BaseModel):
     category_id: int  # Foreign key
     seller_id: int    # Foreign key
 
-    #Validations with pydantic
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -34,19 +33,19 @@ class ProductCRUD:
         self.db_connection = PostgresDatabaseConnection()
         self.db_connection.connect()
 
-    def _execute_query(self, query: str, values: tuple = None) -> bool: # Better name for the function
+    def _execute_query(self, query: str, values: tuple = None) -> bool:
         try:
             cursor = self.db_connection.connection.cursor()
             if values:
                 cursor.execute(query, values)
             else:
-                cursor.execute(query) #For queries without values.
+                cursor.execute(query)
             self.db_connection.connection.commit()
             cursor.close()
-            return True #Indicate that the operation was successful.
+            return True
         except Exception as e:
             print(f"Error in database operation: {e}")
-            self.db_connection.connection.rollback() #Revert changes in case of error.
+            self.db_connection.connection.rollback()
             return False
 
     def create(self, data: ProductData) -> Optional[int]:
@@ -68,7 +67,7 @@ class ProductCRUD:
             self.db_connection.connection.rollback()
             print(f"Error creating product: {e}")
             return None
-        
+
     def update(self, product_id: int, data: ProductData) -> bool:
         """Updates a product."""
         query = """
@@ -77,7 +76,7 @@ class ProductCRUD:
             WHERE product_id = %s;
         """
         values = (data.product_name, data.description, data.price, data.quantity_available, data.category_id, data.seller_id, product_id)
-        return self._execute_query(query, values)        
+        return self._execute_query(query, values)
 
     def delete(self, product_id: int) -> bool:
         """Deletes a product."""
@@ -85,7 +84,25 @@ class ProductCRUD:
             DELETE FROM Product
             WHERE product_id = %s;
         """
-        return self._execute_query(query, (product_id,))    
+        return self._execute_query(query, (product_id,))
+
+    def _get_products_from_query(self, query: str, values: tuple = None) -> List[ProductData]:
+        """Helper function to fetch and process product data from a query."""
+        products = []
+        try:
+            cursor = self.db_connection.connection.cursor()
+            if values:
+                cursor.execute(query, values)
+            else:
+                cursor.execute(query)
+            product_list = cursor.fetchall()
+            cursor.close()
+            for product in product_list:
+                products.append(ProductData(*product))
+            return products
+        except Exception as e:
+            print(f"Error fetching products: {e}")
+            return []
 
     def get_by_id(self, product_id: int) -> Optional[ProductData]:
         """Gets a product by ID."""
@@ -94,17 +111,8 @@ class ProductCRUD:
             FROM Product
             WHERE product_id = %s;
         """
-        try:
-            cursor = self.db_connection.connection.cursor()
-            cursor.execute(query, (product_id,))
-            product_data = cursor.fetchone()
-            cursor.close()
-            if product_data:
-                return ProductData(*product_data)  # Unpack the results
-            return None #If the product is not found.
-        except Exception as e:
-            print(f"Error getting product by ID: {e}")
-            return None
+        products = self._get_products_from_query(query, (product_id,))
+        return products[0] if products else None  # Return None if no products found
 
     def get_all(self) -> List[ProductData]:
         """Gets all products."""
@@ -112,18 +120,7 @@ class ProductCRUD:
             SELECT product_name, description, price, quantity_available, category_id, seller_id
             FROM Product;
         """
-        products = []
-        try:
-            cursor = self.db_connection.connection.cursor()
-            cursor.execute(query)
-            product_list = cursor.fetchall()
-            cursor.close()
-            for product in product_list:
-                products.append(ProductData(*product)) #Create ProductData objects for the list.
-            return products
-        except Exception as e:
-            print(f"Error getting all products: {e}")
-            return []
+        return self._get_products_from_query(query)
 
     def get_by_name(self, product_name: str) -> List[ProductData]:
         """Gets products by name (case-insensitive search)."""
@@ -132,18 +129,7 @@ class ProductCRUD:
             FROM Product
             WHERE LOWER(product_name) LIKE LOWER(%s);  -- Case-insensitive comparison
         """
-        products = []
-        try:
-            cursor = self.db_connection.connection.cursor()
-            cursor.execute(query, ("%" + product_name + "%",)) # Add wildcard % for partial matches.
-            product_list = cursor.fetchall()
-            cursor.close()
-            for product in product_list:
-                products.append(ProductData(*product))
-            return products
-        except Exception as e:
-            print(f"Error getting products by name: {e}")
-            return []
+        return self._get_products_from_query(query, ("%" + product_name + "%",))
 
     def get_by_category(self, category_id: int) -> List[ProductData]:
         """Gets products by category."""
@@ -152,16 +138,4 @@ class ProductCRUD:
             FROM Product
             WHERE category_id = %s;
         """
-        products = []
-        try:
-            cursor = self.db_connection.connection.cursor()
-            cursor.execute(query, (category_id,))
-            product_list = cursor.fetchall()
-            cursor.close()
-            for product in product_list:
-                products.append(ProductData(*product))
-            return products
-        except Exception as e:
-            print(f"Error getting products by category: {e}")
-            return []
-
+        return self._get_products_from_query(query, (category_id,))

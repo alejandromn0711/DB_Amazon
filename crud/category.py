@@ -1,10 +1,11 @@
 from typing import List, Optional
+from pydantic import BaseModel, EmailStr, validator
 
 from database_connection import PostgresDatabaseConnection
 
 class CategoryData(BaseModel):
     """Data structure for Category."""
-    categoryName: str
+    categoryname: str
     description: Optional[str] = None  # Descripción opcional
 
 class CategoryCRUD:
@@ -31,11 +32,11 @@ class CategoryCRUD:
     def create(self, data: CategoryData) -> Optional[int]:
         """Creates a new category."""
         query = """
-            INSERT INTO Category (categoryName, description)
+            INSERT INTO Category (categoryname, description)
             VALUES (%s, %s)
             RETURNING category_id;
         """
-        values = (data.categoryName, data.description)
+        values = (data.categoryname, data.description)
         try:
             cursor = self.db_connection.connection.cursor()
             cursor.execute(query, values)
@@ -51,7 +52,7 @@ class CategoryCRUD:
     def get_by_id(self, category_id: int) -> Optional[CategoryData]:
         """Gets a category by ID."""
         query = """
-            SELECT categoryName, description
+            SELECT categoryname, description
             FROM Category
             WHERE category_id = %s;
         """
@@ -61,7 +62,12 @@ class CategoryCRUD:
             category_data = cursor.fetchone()
             cursor.close()
             if category_data:
-                return CategoryData(*category_data)
+                # La corrección está aquí: Crear un diccionario
+                category_dict = {
+                    "categoryname": category_data[0],
+                    "description": category_data[1]
+                }
+                return CategoryData(**category_dict) #Doble ** para diccionario
             return None
         except Exception as e:
             print(f"Error getting category by ID: {e}")
@@ -70,7 +76,7 @@ class CategoryCRUD:
     def get_all(self) -> List[CategoryData]:
         """Gets all categories."""
         query = """
-            SELECT categoryName, description
+            SELECT categoryname, description
             FROM Category;
         """
         categories = []
@@ -79,8 +85,13 @@ class CategoryCRUD:
             cursor.execute(query)
             category_list = cursor.fetchall()
             cursor.close()
-            for category in category_list:
-                categories.append(CategoryData(*category))
+            for category_data in category_list:  # Iteramos sobre las tuplas
+                # La corrección está aquí: Crear un diccionario para cada tupla
+                category_dict = {
+                    "categoryname": category_data[0],
+                    "description": category_data[1]
+                }
+                categories.append(CategoryData(**category_dict)) #Doble ** para diccionario
             return categories
         except Exception as e:
             print(f"Error getting all categories: {e}")
@@ -90,10 +101,10 @@ class CategoryCRUD:
         """Updates a category."""
         query = """
             UPDATE Category
-            SET categoryName = %s, description = %s
+            SET categoryname = %s, description = %s
             WHERE category_id = %s;
         """
-        values = (data.categoryName, data.description, category_id)
+        values = (data.categoryname, data.description, category_id)
         return self._execute_query(query, values)
 
     def delete(self, category_id: int) -> bool:
@@ -104,21 +115,25 @@ class CategoryCRUD:
         """
         return self._execute_query(query, (category_id,))
 
-    def get_by_name(self, category_name: str) -> List[CategoryData]:
+    def get_by_name(self, categoryname: str) -> List[CategoryData]:
         """Gets categories by name (case-insensitive search)."""
         query = """
-            SELECT categoryName, description
+            SELECT categoryname, description
             FROM Category
-            WHERE LOWER(categoryName) LIKE LOWER(%s);
+            WHERE LOWER(categoryname) LIKE LOWER(%s);
         """
         categories = []
         try:
             cursor = self.db_connection.connection.cursor()
-            cursor.execute(query, ("%" + category_name + "%",))  # Wildcard para búsqueda parcial
+            cursor.execute(query, ("%" + categoryname + "%",))  # Wildcard para búsqueda parcial
             category_list = cursor.fetchall()
             cursor.close()
-            for category in category_list:
-                categories.append(CategoryData(*category))
+            for category_data in category_list:
+                category_dict = {
+                    "categoryname": category_data[0],  # Usar "name" si es el nombre de la columna
+                    "description": category_data[1]
+                }
+                categories.append(CategoryData(**category_dict))  # Corrección importante
             return categories
         except Exception as e:
             print(f"Error getting categories by name: {e}")
