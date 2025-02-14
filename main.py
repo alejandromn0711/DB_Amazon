@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 
-# Import ROuters
+# Import Routers
 from services import (customer, payment_method, product, category, coupons, seller, 
                       offer, orders, product_recommendations, returns, review, search_history,
-                       shipping, shopping_cart, shopping_cart_product, order_items)  # Ajusta las rutas si es necesario
+                      shipping, shopping_cart, shopping_cart_product, order_items)  # Adjust paths if necessary
 
 app = FastAPI(title="My Amazon API")
 
@@ -25,8 +25,6 @@ app.include_router(shopping_cart.router)
 app.include_router(shopping_cart_product.router)
 app.include_router(order_items.router)
 
-# Puedes agregar más configuración aquí, como middleware, etc.
-
-@app.get("/")  # Ruta raíz
+@app.get("/")  # Root route
 async def root():
-    return {"message": "¡Welcome!"}
+    return {"message": "Welcome!"}
