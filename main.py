@@ -7,7 +7,7 @@ from services import (customer, payment_method, product, category, coupons, sell
 
 app = FastAPI(title="My Amazon API")
 
-# Routers
+"""Include Routers"""
 app.include_router(customer.router)
 app.include_router(product.router)
 app.include_router(category.router)
@@ -25,6 +25,7 @@ app.include_router(shopping_cart.router)
 app.include_router(shopping_cart_product.router)
 app.include_router(order_items.router)
 
-@app.get("/")  # Root route
+@app.get("/")
 async def root():
+    """Root route"""
     return {"message": "Welcome!"}

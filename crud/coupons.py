@@ -1,7 +1,7 @@
 from typing import List, Optional
 from pydantic import BaseModel
 
-from database_connection import PostgresDatabaseConnection
+from DB_Amazon.PGDatabase_Connection import PostgresDatabaseConnection
 
 class CouponsData(BaseModel):
     """Data structure for Coupons."""
@@ -9,14 +9,15 @@ class CouponsData(BaseModel):
     discount_value: float
     expiration_date: str  # YYYY-MM-DD format is recommended
 
-
 class CouponsCRUD:
 
     def __init__(self):
+        """Initialize the database connection."""
         self.db_connection = PostgresDatabaseConnection()
         self.db_connection.connect()
 
     def _execute_query(self, query: str, values: tuple = None) -> bool:
+        """Execute a query on the database."""
         try:
             cursor = self.db_connection.connection.cursor()
             if values:
@@ -32,13 +33,13 @@ class CouponsCRUD:
             return False
 
     def create(self, data: CouponsData) -> Optional[int]:
-        """Creates a new coupon."""
+        """Create a new coupon."""
         query = """
-            INSERT INTO Coupons (discount_code, discount_value, expiration_date)  -- applicable_product_id eliminado
+            INSERT INTO Coupons (discount_code, discount_value, expiration_date)
             VALUES (%s, %s, %s)
             RETURNING coupons_id;
         """
-        values = (data.discount_code, data.discount_value, data.expiration_date)  # applicable_product_id eliminado
+        values = (data.discount_code, data.discount_value, data.expiration_date)
         try:
             cursor = self.db_connection.connection.cursor()
             cursor.execute(query, values)
@@ -52,9 +53,9 @@ class CouponsCRUD:
             return None
 
     def get_by_id(self, coupons_id: int) -> Optional[CouponsData]:
-        """Gets a coupon by ID."""
+        """Get a coupon by ID."""
         query = """
-            SELECT discount_code, discount_value, expiration_date  -- applicable_product_id eliminado
+            SELECT discount_code, discount_value, expiration_date
             FROM Coupons
             WHERE coupons_id = %s;
         """
@@ -71,9 +72,9 @@ class CouponsCRUD:
             return None
 
     def get_all(self) -> List[CouponsData]:
-        """Gets all coupons."""
+        """Get all coupons."""
         query = """
-            SELECT discount_code, discount_value, expiration_date  -- applicable_product_id eliminado
+            SELECT discount_code, discount_value, expiration_date
             FROM Coupons;
         """
         coupons = []
@@ -90,17 +91,17 @@ class CouponsCRUD:
             return []
 
     def update(self, coupons_id: int, data: CouponsData) -> bool:
-        """Updates a coupon."""
+        """Update a coupon."""
         query = """
             UPDATE Coupons
-            SET discount_code = %s, discount_value = %s, expiration_date = %s  -- applicable_product_id eliminado
+            SET discount_code = %s, discount_value = %s, expiration_date = %s
             WHERE coupons_id = %s;
         """
-        values = (data.discount_code, data.discount_value, data.expiration_date, coupons_id)  # applicable_product_id eliminado
+        values = (data.discount_code, data.discount_value, data.expiration_date, coupons_id)
         return self._execute_query(query, values)
 
     def delete(self, coupons_id: int) -> bool:
-        """Deletes a coupon."""
+        """Delete a coupon."""
         query = """
             DELETE FROM Coupons
             WHERE coupons_id = %s;
@@ -108,9 +109,9 @@ class CouponsCRUD:
         return self._execute_query(query, (coupons_id,))
 
     def get_by_code(self, discount_code: str) -> Optional[CouponsData]:
-        """Gets a coupon by discount code."""
+        """Get a coupon by discount code."""
         query = """
-            SELECT discount_code, discount_value, expiration_date  -- applicable_product_id eliminado
+            SELECT discount_code, discount_value, expiration_date
             FROM Coupons
             WHERE discount_code = %s;
         """

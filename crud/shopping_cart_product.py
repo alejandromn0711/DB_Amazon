@@ -1,7 +1,7 @@
 from typing import List, Optional
 from pydantic import BaseModel
 
-from database_connection import PostgresDatabaseConnection
+from DB_Amazon.PGDatabase_Connection import PostgresDatabaseConnection
 
 class ShoppingCartProductData(BaseModel):
     """Data structure for ShoppingCart_Product."""
@@ -12,10 +12,12 @@ class ShoppingCartProductData(BaseModel):
 class ShoppingCartProductCRUD:
 
     def __init__(self):
+        """Initialize the database connection."""
         self.db_connection = PostgresDatabaseConnection()
         self.db_connection.connect()
 
     def _execute_query(self, query: str, values: tuple = None) -> bool:
+        """Execute a query on the database."""
         try:
             cursor = self.db_connection.connection.cursor()
             if values:
@@ -26,11 +28,11 @@ class ShoppingCartProductCRUD:
             cursor.close()
             return True
         except Exception as e:
-            print(f"Error en la operación de la base de datos: {e}")
+            print(f"Error in database operation: {e}")
             self.db_connection.connection.rollback()
             return False
 
-    def create(self, data: ShoppingCartProductData) -> bool:  # Retorna True o False
+    def create(self, data: ShoppingCartProductData) -> bool:
         """Adds a product to the shopping cart."""
         query = """
             INSERT INTO ShoppingCart_Product (cart_id, product_id, quantity)
@@ -53,7 +55,7 @@ class ShoppingCartProductCRUD:
             product_list = cursor.fetchall()
             cursor.close()
             for product in product_list:
-                products.append(ShoppingCartProductData(cart_id=cart_id, product_id=product[0], quantity=product[1])) #Incluir cart_id
+                products.append(ShoppingCartProductData(cart_id=cart_id, product_id=product[0], quantity=product[1]))  # Include cart_id
             return products
         except Exception as e:
             print(f"Error getting products in shopping cart: {e}")
@@ -85,4 +87,4 @@ class ShoppingCartProductCRUD:
         """
         return self._execute_query(query, (cart_id,))
 
-    # No se incluye get_by_id porque la clave primaria es compuesta (cart_id, product_id)
+    # No get_by_id method because the primary key is composite (cart_id, product_id)

@@ -1,7 +1,7 @@
 from typing import List, Optional
 from pydantic import BaseModel
 
-from database_connection import PostgresDatabaseConnection
+from DB_Amazon.PGDatabase_Connection import PostgresDatabaseConnection
 
 class ShippingData(BaseModel):
     """Data structure for Shipping."""
@@ -13,10 +13,12 @@ class ShippingData(BaseModel):
 class ShippingCRUD:
 
     def __init__(self):
+        """Initialize the database connection."""
         self.db_connection = PostgresDatabaseConnection()
         self.db_connection.connect()
 
     def _execute_query(self, query: str, values: tuple = None) -> bool:
+        """Execute a query on the database."""
         try:
             cursor = self.db_connection.connection.cursor()
             if values:
@@ -27,7 +29,7 @@ class ShippingCRUD:
             cursor.close()
             return True
         except Exception as e:
-            print(f"Error en la operación de la base de datos: {e}")
+            print(f"Error in database operation: {e}")
             self.db_connection.connection.rollback()
             return False
 

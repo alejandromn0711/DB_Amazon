@@ -1,7 +1,7 @@
 from typing import List, Optional
 from pydantic import BaseModel
 
-from database_connection import PostgresDatabaseConnection  # Make sure you have this connection
+from DB_Amazon.PGDatabase_Connection import PostgresDatabaseConnection  # Make sure you have this connection
 
 class ProductData(BaseModel):
     """Data structure for Product."""
@@ -30,10 +30,12 @@ class ProductData(BaseModel):
 class ProductCRUD:
 
     def __init__(self):
+        """Initialize the database connection."""
         self.db_connection = PostgresDatabaseConnection()
         self.db_connection.connect()
 
     def _execute_query(self, query: str, values: tuple = None) -> bool:
+        """Execute a query on the database."""
         try:
             cursor = self.db_connection.connection.cursor()
             if values:

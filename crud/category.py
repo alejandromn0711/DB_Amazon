@@ -1,7 +1,7 @@
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr, validator
 
-from database_connection import PostgresDatabaseConnection
+from DB_Amazon.PGDatabase_Connection import PostgresDatabaseConnection
 
 class CategoryData(BaseModel):
     """Data structure for Category."""

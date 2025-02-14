@@ -1,23 +1,24 @@
 from typing import List, Optional
 from pydantic import BaseModel
 
-from database_connection import PostgresDatabaseConnection
+from DB_Amazon.PGDatabase_Connection import PostgresDatabaseConnection
 
 class ReturnsData(BaseModel):
     """Data structure for Returns."""
     return_date: str      # ISO 8601 format is recommended (YYYY-MM-DD)
     return_reason: Optional[str] = None
     return_status: Optional[str] = None
-    order_item_id: int        # Foreign key. Se usa order_item_id
-
+    order_item_id: int        # Foreign key
 
 class ReturnsCRUD:
 
     def __init__(self):
+        """Initialize the database connection."""
         self.db_connection = PostgresDatabaseConnection()
         self.db_connection.connect()
 
     def _execute_query(self, query: str, values: tuple = None) -> bool:
+        """Execute a query on the database."""
         try:
             cursor = self.db_connection.connection.cursor()
             if values:
@@ -28,18 +29,18 @@ class ReturnsCRUD:
             cursor.close()
             return True
         except Exception as e:
-            print(f"Error en la operación de la base de datos: {e}")
+            print(f"Error in database operation: {e}")
             self.db_connection.connection.rollback()
             return False
 
     def create(self, data: ReturnsData) -> Optional[int]:
         """Creates a new return."""
         query = """
-            INSERT INTO Returns (return_date, return_reason, return_status, order_item_id)  -- orders_id eliminado, se usa order_item_id
+            INSERT INTO Returns (return_date, return_reason, return_status, order_item_id)
             VALUES (%s, %s, %s, %s)
             RETURNING returns_id;
         """
-        values = (data.return_date, data.return_reason, data.return_status, data.order_item_id)  # orders_id eliminado
+        values = (data.return_date, data.return_reason, data.return_status, data.order_item_id)
         try:
             cursor = self.db_connection.connection.cursor()
             cursor.execute(query, values)
@@ -55,7 +56,7 @@ class ReturnsCRUD:
     def get_by_id(self, returns_id: int) -> Optional[ReturnsData]:
         """Gets a return by ID."""
         query = """
-            SELECT return_date, return_reason, return_status, order_item_id  -- orders_id eliminado, se usa order_item_id
+            SELECT return_date, return_reason, return_status, order_item_id
             FROM Returns
             WHERE returns_id = %s;
         """
@@ -74,7 +75,7 @@ class ReturnsCRUD:
     def get_all(self) -> List[ReturnsData]:
         """Gets all returns."""
         query = """
-            SELECT return_date, return_reason, return_status, order_item_id  -- orders_id eliminado, se usa order_item_id
+            SELECT return_date, return_reason, return_status, order_item_id
             FROM Returns;
         """
         returns = []
@@ -94,10 +95,10 @@ class ReturnsCRUD:
         """Updates a return."""
         query = """
             UPDATE Returns
-            SET return_date = %s, return_reason = %s, return_status = %s, order_item_id = %s  -- orders_id eliminado, se usa order_item_id
+            SET return_date = %s, return_reason = %s, return_status = %s, order_item_id = %s
             WHERE returns_id = %s;
         """
-        values = (data.return_date, data.return_reason, data.return_status, data.order_item_id, returns_id)  # orders_id eliminado
+        values = (data.return_date, data.return_reason, data.return_status, data.order_item_id, returns_id)
         return self._execute_query(query, values)
 
     def delete(self, returns_id: int) -> bool:

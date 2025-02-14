@@ -1,9 +1,10 @@
 import psycopg2
 
 class PostgresDatabaseConnection:
-    """This class is responsible for connecting to the database."""
+    """This class is responsible for connecting to the PostgreSQL database."""
 
     def __init__(self):
+        """Initialize the database connection parameters."""
         self._dbname = "amazon"
         self._duser = "postgres"
         self._dpass = "admin123"
@@ -12,7 +13,7 @@ class PostgresDatabaseConnection:
         self.connection = None
 
     def connect(self):
-        """This method connects to the database."""
+        """This method connects to the PostgreSQL database."""
         try:
             self.connection = psycopg2.connect(
                 dbname=self._dbname,

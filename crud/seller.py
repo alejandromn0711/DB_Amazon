@@ -1,7 +1,7 @@
 from typing import List, Optional
 from pydantic import BaseModel
 
-from database_connection import PostgresDatabaseConnection
+from DB_Amazon.PGDatabase_Connection import PostgresDatabaseConnection
 
 class SellerData(BaseModel):
     """Data structure for Seller."""
@@ -12,10 +12,12 @@ class SellerData(BaseModel):
 class SellerCRUD:
 
     def __init__(self):
+        """Initialize the database connection."""
         self.db_connection = PostgresDatabaseConnection()
         self.db_connection.connect()
 
     def _execute_query(self, query: str, values: tuple = None) -> bool:
+        """Execute a query on the database."""
         try:
             cursor = self.db_connection.connection.cursor()
             if values:
@@ -26,7 +28,7 @@ class SellerCRUD:
             cursor.close()
             return True
         except Exception as e:
-            print(f"Error en la operación de la base de datos: {e}")
+            print(f"Error in database operation: {e}")
             self.db_connection.connection.rollback()
             return False
 
@@ -47,7 +49,7 @@ class SellerCRUD:
             return seller_id
         except Exception as e:
             self.db_connection.connection.rollback()
-            print(f"Error al crear el vendedor: {e}")
+            print(f"Error creating seller: {e}")
             return None
 
     def get_by_id(self, seller_id: int) -> Optional[SellerData]:
@@ -66,7 +68,7 @@ class SellerCRUD:
                 return SellerData(*seller_data)
             return None
         except Exception as e:
-            print(f"Error al obtener el vendedor por ID: {e}")
+            print(f"Error getting seller by ID: {e}")
             return None
 
     def get_all(self) -> List[SellerData]:
@@ -85,7 +87,7 @@ class SellerCRUD:
                 sellers.append(SellerData(*seller))
             return sellers
         except Exception as e:
-            print(f"Error al obtener todos los vendedores: {e}")
+            print(f"Error getting all sellers: {e}")
             return []
 
     def update(self, seller_id: int, data: SellerData) -> bool:
@@ -116,12 +118,12 @@ class SellerCRUD:
         sellers = []
         try:
             cursor = self.db_connection.connection.cursor()
-            cursor.execute(query, ("%" + seller_name + "%",))  # Wildcard para búsqueda parcial
+            cursor.execute(query, ("%" + seller_name + "%",))  # Wildcard for partial search
             seller_list = cursor.fetchall()
             cursor.close()
             for seller in seller_list:
                 sellers.append(SellerData(*seller))
             return sellers
         except Exception as e:
-            print(f"Error al obtener vendedores por nombre: {e}")
+            print(f"Error getting sellers by name: {e}")
             return []

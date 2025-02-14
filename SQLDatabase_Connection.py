@@ -12,7 +12,7 @@ class MySQLDatabaseConnection:
         self.connection = None
 
     def connect(self):
-        """This method connects to the database."""
+        """This method connects to the MySQL database."""
         try:
             self.connection = mysql.connector.connect(
                 database=self._dbname,
@@ -26,7 +26,7 @@ class MySQLDatabaseConnection:
             print(f"❌ MySQL connection failed: {e}")
 
     def test_query(self):
-        """This method tests a simple query to check the connection."""
+        """This method tests a simple query to check the MySQL connection."""
         if self.connection:
             try:
                 cursor = self.connection.cursor()
@@ -39,7 +39,7 @@ class MySQLDatabaseConnection:
             print("⚠️ No active MySQL connection.")
 
     def close(self):
-        """This method closes the database connection."""
+        """This method closes the MySQL database connection."""
         if self.connection:
             self.connection.close()
             print("🔌 MySQL connection closed.")

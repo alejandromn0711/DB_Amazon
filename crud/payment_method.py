@@ -1,21 +1,22 @@
 from typing import List, Optional
 from pydantic import BaseModel
 
-from database_connection import PostgresDatabaseConnection
+from DB_Amazon.PGDatabase_Connection import PostgresDatabaseConnection
 
 class PaymentMethodData(BaseModel):
     """Data structure for PaymentMethod."""
     payment_type: str
-    customer_id: Optional[int] = None  # Foreign key (puede ser nulo)
-
+    customer_id: Optional[int] = None  # Foreign key (can be null)
 
 class PaymentMethodCRUD:
 
     def __init__(self):
+        """Initialize the database connection."""
         self.db_connection = PostgresDatabaseConnection()
         self.db_connection.connect()
 
     def _execute_query(self, query: str, values: tuple = None) -> bool:
+        """Execute a query on the database."""
         try:
             cursor = self.db_connection.connection.cursor()
             if values:
@@ -26,7 +27,7 @@ class PaymentMethodCRUD:
             cursor.close()
             return True
         except Exception as e:
-            print(f"Error en la operación de la base de datos: {e}")
+            print(f"Error in database operation: {e}")
             self.db_connection.connection.rollback()
             return False
 
@@ -105,6 +106,3 @@ class PaymentMethodCRUD:
             WHERE payment_method_id = %s;
         """
         return self._execute_query(query, (payment_method_id,))
-
-    # Puedes agregar métodos adicionales según sea necesario, por ejemplo:
-    # get_by_customer, etc.

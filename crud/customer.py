@@ -2,7 +2,7 @@ from typing import List, Optional
 from pydantic import BaseModel, EmailStr, validator
 from datetime import date
 
-from database_connection import PostgresDatabaseConnection
+from DB_Amazon.PGDatabase_Connection import PostgresDatabaseConnection
 
 class CustomerData(BaseModel):
     """Data structure for Customer."""
@@ -10,21 +10,24 @@ class CustomerData(BaseModel):
     email: EmailStr
     shipping_address: str
     phone: str
-    registration_date: date  # Tipo de dato date
+    registration_date: date
 
     @validator("phone")
     def validate_phone(cls, phone):
-        # Aquí puedes agregar validación más específica para el número de teléfono
-        # Por ejemplo, longitud, formato, etc.
+        """Validate the phone number."""
+        # Here you can add more specific validation for the phone number
+        # For example, length, format, etc.
         return phone
 
 class CustomerCRUD:
 
     def __init__(self):
+        """Initialize the database connection."""
         self.db_connection = PostgresDatabaseConnection()
         self.db_connection.connect()
 
     def _execute_query(self, query: str, values: tuple = None) -> bool:
+        """Execute a query on the database."""
         try:
             cursor = self.db_connection.connection.cursor()
             if values:
@@ -35,7 +38,7 @@ class CustomerCRUD:
             cursor.close()
             return True
         except Exception as e:
-            print(f"Error en la operación de la base de datos: {e}")
+            print(f"Error in database operation: {e}")
             self.db_connection.connection.rollback()
             return False
 
@@ -46,7 +49,7 @@ class CustomerCRUD:
             VALUES (%s, %s, %s, %s, %s)
             RETURNING customer_id;
         """
-        values = (data.full_name, data.email, data.shipping_address, data.phone, data.registration_date.strftime('%Y-%m-%d'))  # Formateo de fecha para la BD
+        values = (data.full_name, data.email, data.shipping_address, data.phone, data.registration_date.strftime('%Y-%m-%d'))
         try:
             cursor = self.db_connection.connection.cursor()
             cursor.execute(query, values)
@@ -77,10 +80,10 @@ class CustomerCRUD:
                     "email": customer_data[1],
                     "shipping_address": customer_data[2],
                     "phone": customer_data[3],
-                    "registration_date": customer_data[4] # No es necesario formatear, FastAPI lo hace automáticamente
+                    "registration_date": customer_data[4]
                 }
                 return CustomerData(**customer_dict)
-            return None  # Retorna None si no se encuentra el cliente
+            return None
         except Exception as e:
             print(f"Error getting customer by ID: {e}")
             return None
@@ -103,13 +106,13 @@ class CustomerCRUD:
                     "email": customer_data[1],
                     "shipping_address": customer_data[2],
                     "phone": customer_data[3],
-                    "registration_date": customer_data[4] # No es necesario formatear, FastAPI lo hace automáticamente
+                    "registration_date": customer_data[4]
                 }
                 customers.append(CustomerData(**customer_dict))
             return customers
         except Exception as e:
             print(f"Error getting all customers: {e}")
-            return []  # Retorna una lista vacía en caso de error
+            return []
 
     def update(self, customer_id: int, data: CustomerData) -> bool:
         """Updates a customer."""
@@ -118,7 +121,7 @@ class CustomerCRUD:
             SET full_name = %s, email = %s, shipping_address = %s, phone = %s, registration_date = %s
             WHERE customer_id = %s;
         """
-        values = (data.full_name, data.email, data.shipping_address, data.phone, data.registration_date.strftime('%Y-%m-%d'), customer_id)  # Formateo de fecha para la BD
+        values = (data.full_name, data.email, data.shipping_address, data.phone, data.registration_date.strftime('%Y-%m-%d'), customer_id)
         return self._execute_query(query, values)
 
     def delete(self, customer_id: int) -> bool:
@@ -147,10 +150,10 @@ class CustomerCRUD:
                     "email": customer_data[1],
                     "shipping_address": customer_data[2],
                     "phone": customer_data[3],
-                    "registration_date": customer_data[4] # No es necesario formatear, FastAPI lo hace automáticamente
+                    "registration_date": customer_data[4]
                 }
                 return CustomerData(**customer_dict)
-            return None  # Retorna None si no se encuentra el cliente
+            return None
         except Exception as e:
             print(f"Error getting customer by email: {e}")
             return None
@@ -165,7 +168,7 @@ class CustomerCRUD:
         customers = []
         try:
             cursor = self.db_connection.connection.cursor()
-            cursor.execute(query, ("%" + full_name + "%",))  # Wildcard for partial matches
+            cursor.execute(query, ("%" + full_name + "%",))
             customer_list = cursor.fetchall()
             cursor.close()
             for customer_data in customer_list:
@@ -174,16 +177,15 @@ class CustomerCRUD:
                     "email": customer_data[1],
                     "shipping_address": customer_data[2],
                     "phone": customer_data[3],
-                    "registration_date": customer_data[4] # No es necesario formatear, FastAPI lo hace automáticamente
+                    "registration_date": customer_data[4]
                 }
                 customers.append(CustomerData(**customer_dict))
             return customers
         except Exception as e:
             print(f"Error getting customers by name: {e}")
-            return []  # Retorna una lista vacía en caso de error
+            return []
 
-
-# Ejemplo de uso en un endpoint de FastAPI:
+# Example usage in a FastAPI endpoint:
 from fastapi import FastAPI, APIRouter
 
 app = FastAPI()
@@ -192,7 +194,8 @@ customer_crud = CustomerCRUD()
 
 @router.get("/customer/get_by_id/{customer_id}", response_model=CustomerData)
 def get_customer_by_id(customer_id: int):
+    """Gets a customer by ID."""
     customer = customer_crud.get_by_id(customer_id)
-    return customer  # FastAPI serializa automáticamente el objeto date a ISO 8601
+    return customer
 
 app.include_router(router)
