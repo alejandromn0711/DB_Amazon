@@ -1,7 +1,7 @@
 from typing import List, Optional
 from pydantic import BaseModel
 
-from DB_Amazon.PGDatabase_Connection import PostgresDatabaseConnection
+from PGDatabase_Connection import PostgresDatabaseConnection
 
 class ShoppingCartData(BaseModel):
     """Data structure for ShoppingCart."""

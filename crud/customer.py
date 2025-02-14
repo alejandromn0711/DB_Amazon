@@ -2,7 +2,7 @@ from typing import List, Optional
 from pydantic import BaseModel, EmailStr, validator
 from datetime import date
 
-from DB_Amazon.PGDatabase_Connection import PostgresDatabaseConnection
+from PGDatabase_Connection import PostgresDatabaseConnection
 
 class CustomerData(BaseModel):
     """Data structure for Customer."""

@@ -1,7 +1,7 @@
 from typing import List, Optional
 from pydantic import BaseModel
 
-from DB_Amazon.PGDatabase_Connection import PostgresDatabaseConnection  # Make sure you have this connection
+from PGDatabase_Connection import PostgresDatabaseConnection  # Make sure you have this connection
 
 class ProductData(BaseModel):
     """Data structure for Product."""
