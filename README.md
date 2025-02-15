@@ -58,4 +58,4 @@ Finally everything will be complete and you will be able to make use of this dat
 - __Databases__: MySQL and PostgreSQL.
 - __Containerization__: Docker and Docker Compose.
 
-Feel free to explore the repository and customize the setup according to your project requirements.
+I hope this program will be useful for your research or studies and I will see you another time.
