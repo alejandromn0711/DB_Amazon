@@ -36,3 +36,8 @@ def get_all_sellers():
 def get_seller_by_name(seller_name: str):
     """Gets sellers by name."""
     return crud.get_by_name(seller_name)
+
+@router.get("/seller/get_by_rating/{seller_rating}", response_model=List[SellerData])
+def get_seller_by_rating(seller_rating: str):
+    """Gets sellers by rating."""
+    return crud.get_by_rating(seller_rating)

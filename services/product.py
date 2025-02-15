@@ -41,3 +41,23 @@ def get_product_by_name(product_name: str):
 def get_product_by_category(category_id: int):
     """Gets products by category."""
     return crud.get_by_category(category_id)
+
+@router.get("/product/get_cheaper/{max_price}", response_model=List[ProductData])
+def get_products_by_price(max_price: float):
+    """Gets products with a price lower than or equal to the given value."""
+    return crud.get_cheaper(max_price)
+
+@router.get("/product/get_expensive/{min_price}", response_model=List[ProductData])
+def get_products_expensive(min_price: float):
+    """Gets products with a price lower than or equal to the given value."""
+    return crud.get_expensive(min_price)
+
+@router.get("/product/get_by_price_ascendent", response_model=List[ProductData])
+def get_products_by_price_ascendent():
+    """Gets products ordered by price in ascending order."""
+    return crud.get_by_price_ascendent()
+
+@router.get("/product/get_by_price_descendent", response_model=List[ProductData])
+def get_products_by_price_descendent():
+    """Gets products ordered by price in descending order."""
+    return crud.get_by_price_descendent()

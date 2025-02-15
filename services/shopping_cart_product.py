@@ -1,45 +1,34 @@
-from typing import List
-
-from fastapi import APIRouter
-
+from typing import List, Dict
+from fastapi import APIRouter, HTTPException, status
 from crud.shopping_cart_product import ShoppingCartProductData, ShoppingCartProductCRUD
 
 router = APIRouter()
 crud = ShoppingCartProductCRUD()
 
-@router.post("/shopping_cart_product/add", status_code=201)
-def add_product_to_cart(data: ShoppingCartProductData):
-    """Adds a product to the shopping cart."""
-    if crud.create(data):
-        return {"message": "Product added to cart successfully"}
-    else:
-        return {"message": "Failed to add product to cart"}
+@router.post("/shopping_cart_product/{cart_id}/add", status_code=status.HTTP_201_CREATED)
+def add_product_to_cart(cart_id: int, data: ShoppingCartProductData):
+    if not crud.create(cart_id, data):
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al agregar producto al carrito")
+    return {"message": "Producto agregado al carrito exitosamente"}
 
-@router.get("/shopping_cart_product/cart/{cart_id}", response_model=List[ShoppingCartProductData])
+@router.get("/shopping_cart_product/{cart_id}", response_model=List[Dict])
 def get_products_in_cart(cart_id: int):
-    """Gets products in a shopping cart."""
     return crud.get_by_cart_id(cart_id)
 
-@router.put("/shopping_cart_product/update/{cart_id}/{product_id}")
+@router.put("/shopping_cart_product/{cart_id}/{product_id}")
 def update_product_quantity(cart_id: int, product_id: int, data: ShoppingCartProductData):
-    """Updates the quantity of a product in the shopping cart."""
-    if crud.update(cart_id, product_id, data):
-        return {"message": "Product quantity updated successfully"}
-    else:
-        return {"message": "Failed to update product quantity"}
+    if not crud.update(cart_id, product_id, data):
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al actualizar cantidad del producto")
+    return {"message": "Cantidad de producto actualizada exitosamente"}
 
-@router.delete("/shopping_cart_product/remove/{cart_id}/{product_id}")
+@router.delete("/shopping_cart_product/{cart_id}/{product_id}")
 def remove_product_from_cart(cart_id: int, product_id: int):
-    """Removes a product from the shopping cart."""
-    if crud.delete(cart_id, product_id):
-        return {"message": "Product removed from cart successfully"}
-    else:
-        return {"message": "Failed to remove product from cart"}
+    if not crud.delete(cart_id, product_id):
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al eliminar producto del carrito")
+    return {"message": "Producto eliminado del carrito exitosamente"}
 
-@router.delete("/shopping_cart_product/clear/{cart_id}")
+@router.delete("/shopping_cart_product/{cart_id}")
 def clear_shopping_cart(cart_id: int):
-    """Clears all products from the shopping cart."""
-    if crud.delete_by_cart_id(cart_id):
-        return {"message": "Shopping cart cleared successfully"}
-    else:
-        return {"message": "Failed to clear shopping cart"}
+    if not crud.delete_by_cart_id(cart_id):
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al limpiar carrito")
+    return {"message": "Carrito limpiado exitosamente"}

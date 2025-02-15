@@ -1,12 +1,12 @@
 from typing import List, Optional
 from pydantic import BaseModel
-
-from PGDatabase_Connection import PostgresDatabaseConnection
+from datetime import date
+from connections import PostgresDatabaseConnection  # Ensure you import your connection class
 
 class SearchHistoryData(BaseModel):
     """Data structure for SearchHistory."""
     search_term: str
-    search_date: str  # ISO 8601 format is recommended (YYYY-MM-DD)
+    search_date: date  # ISO 8601 format is recommended (YYYY-MM-DD)
     customer_id: int    # Foreign key
 
 class SearchHistoryCRUD:
@@ -32,12 +32,35 @@ class SearchHistoryCRUD:
             self.db_connection.connection.rollback()
             return False
 
+    def _get_search_history(self, query: str, values: tuple = None) -> List[SearchHistoryData]:
+        """Executes a query and returns a list of SearchHistoryData objects."""
+        search_history_entries = []
+        try:
+            cursor = self.db_connection.connection.cursor()
+            if values:
+                cursor.execute(query, values)
+            else:
+                cursor.execute(query)
+            search_history_list = cursor.fetchall()
+            cursor.close()
+            for search_history_entry in search_history_list:
+                search_history_dict = {
+                    "search_term": search_history_entry[0],
+                    "search_date": search_history_entry[1],
+                    "customer_id": search_history_entry[2]
+                }
+                search_history_entries.append(SearchHistoryData(**search_history_dict))
+            return search_history_entries
+        except Exception as e:
+            print(f"Error in query: {e}")
+            return []  # Or raise the exception if you prefer
+
     def create(self, data: SearchHistoryData) -> Optional[int]:
         """Creates a new search history entry."""
         query = """
-            INSERT INTO SearchHistory (search_term, search_date, customer_id)
+            INSERT INTO search_history (search_term, search_date, customer_id)
             VALUES (%s, %s, %s)
-            RETURNING searchHistory_id;
+            RETURNING search_history_id;
         """
         values = (data.search_term, data.search_date, data.customer_id)
         try:
@@ -56,46 +79,35 @@ class SearchHistoryCRUD:
         """Gets a search history entry by ID."""
         query = """
             SELECT search_term, search_date, customer_id
-            FROM SearchHistory
-            WHERE searchHistory_id = %s;
+            FROM search_history
+            WHERE search_history_id = %s;
         """
-        try:
-            cursor = self.db_connection.connection.cursor()
-            cursor.execute(query, (search_history_id,))
-            search_history_data = cursor.fetchone()
-            cursor.close()
-            if search_history_data:
-                return SearchHistoryData(*search_history_data)
-            return None
-        except Exception as e:
-            print(f"Error getting search history entry by ID: {e}")
-            return None
+        results = self._get_search_history(query, (search_history_id,))
+        return results[0] if results else None  # Returns None if no result, the SearchHistoryData object otherwise
 
     def get_all(self) -> List[SearchHistoryData]:
         """Gets all search history entries."""
         query = """
             SELECT search_term, search_date, customer_id
-            FROM SearchHistory;
+            FROM search_history;
         """
-        search_history_entries = []
-        try:
-            cursor = self.db_connection.connection.cursor()
-            cursor.execute(query)
-            search_history_list = cursor.fetchall()
-            cursor.close()
-            for search_history_entry in search_history_list:
-                search_history_entries.append(SearchHistoryData(*search_history_entry))
-            return search_history_entries
-        except Exception as e:
-            print(f"Error getting all search history entries: {e}")
-            return []
+        return self._get_search_history(query)
+
+    def get_by_customer(self, customer_id: int) -> List[SearchHistoryData]:
+        """Gets search history entries for a specific customer."""
+        query = """
+            SELECT search_term, search_date, customer_id
+            FROM search_history
+            WHERE customer_id = %s;
+        """
+        return self._get_search_history(query, (customer_id,))
 
     def update(self, search_history_id: int, data: SearchHistoryData) -> bool:
         """Updates a search history entry."""
         query = """
-            UPDATE SearchHistory
+            UPDATE search_history
             SET search_term = %s, search_date = %s, customer_id = %s
-            WHERE searchHistory_id = %s;
+            WHERE search_history_id = %s;
         """
         values = (data.search_term, data.search_date, data.customer_id, search_history_id)
         return self._execute_query(query, values)
@@ -103,7 +115,15 @@ class SearchHistoryCRUD:
     def delete(self, search_history_id: int) -> bool:
         """Deletes a search history entry."""
         query = """
-            DELETE FROM SearchHistory
-            WHERE searchHistory_id = %s;
+            DELETE FROM search_history
+            WHERE search_history_id = %s;
         """
         return self._execute_query(query, (search_history_id,))
+
+    def delete_by_customer(self, customer_id: int) -> bool:
+        """Deletes all search history entries for a specific customer."""
+        query = """
+            DELETE FROM search_history
+            WHERE customer_id = %s;
+        """
+        return self._execute_query(query, (customer_id,))

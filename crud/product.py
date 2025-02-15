@@ -1,31 +1,16 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pydantic import BaseModel
 
-from PGDatabase_Connection import PostgresDatabaseConnection  # Make sure you have this connection
+from connections import PostgresDatabaseConnection
 
 class ProductData(BaseModel):
     """Data structure for Product."""
     product_name: str
-    description: Optional[str] = None  # Description is optional
-    price: float  # Use float for prices
+    description: Optional[str] = None
+    price: float
     quantity_available: int
-    category_id: int  # Foreign key
-    seller_id: int    # Foreign key
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "product_name": "Example Product",
-                    "description": "A sample product",
-                    "price": 19.99,
-                    "quantity_available": 100,
-                    "category_id": 1,
-                    "seller_id": 1,
-                }
-            ]
-        }
-    }
+    category_id: int
+    seller_id: int
 
 class ProductCRUD:
 
@@ -35,23 +20,64 @@ class ProductCRUD:
         self.db_connection.connect()
 
     def _execute_query(self, query: str, values: tuple = None) -> bool:
-        """Execute a query on the database."""
+        """Executes an SQL query that modifies the database.
+        
+        Args:
+            query (str): The SQL query to execute.
+            values (tuple, optional): The values to use in the query.
+
+        Returns:
+            bool: True if the operation was successful, False otherwise.
+        """
         try:
             cursor = self.db_connection.connection.cursor()
-            if values:
-                cursor.execute(query, values)
-            else:
-                cursor.execute(query)
+            cursor.execute(query, values or ())
             self.db_connection.connection.commit()
             cursor.close()
             return True
         except Exception as e:
-            print(f"Error in database operation: {e}")
+            print(f"Database error: {e}")
             self.db_connection.connection.rollback()
             return False
 
+    def _get_products(self, query: str, values: tuple = None) -> List[Dict]:
+        """Executes a SELECT query and returns products as a list of dictionaries.
+        
+        Args:
+            query (str): The SQL query to execute.
+            values (tuple, optional): The values to use in the query.
+
+        Returns:
+            List[Dict]: A list of products as dictionaries.
+        """
+        products = []
+        try:
+            cursor = self.db_connection.connection.cursor()
+            cursor.execute(query, values or ())
+            for product in cursor.fetchall():
+                products.append({
+                    "product_name": product[0],
+                    "description": product[1],
+                    "price": product[2],
+                    "quantity_available": product[3],
+                    "category_id": product[4],
+                    "seller_id": product[5],
+                })
+            cursor.close()
+            return products
+        except Exception as e:
+            print(f"Error fetching products: {e}")
+            return []
+
     def create(self, data: ProductData) -> Optional[int]:
-        """Creates a new product."""
+        """Creates a new product.
+        
+        Args:
+            data (ProductData): The data for the new product.
+
+        Returns:
+            Optional[int]: The ID of the created product, or None if there was an error.
+        """
         query = """
             INSERT INTO Product (product_name, description, price, quantity_available, category_id, seller_id)
             VALUES (%s, %s, %s, %s, %s, %s)
@@ -71,7 +97,15 @@ class ProductCRUD:
             return None
 
     def update(self, product_id: int, data: ProductData) -> bool:
-        """Updates a product."""
+        """Updates a product.
+        
+        Args:
+            product_id (int): The ID of the product to update.
+            data (ProductData): The new data for the product.
+
+        Returns:
+            bool: True if the update was successful, False otherwise.
+        """
         query = """
             UPDATE Product
             SET product_name = %s, description = %s, price = %s, quantity_available = %s, category_id = %s, seller_id = %s
@@ -81,63 +115,129 @@ class ProductCRUD:
         return self._execute_query(query, values)
 
     def delete(self, product_id: int) -> bool:
-        """Deletes a product."""
-        query = """
-            DELETE FROM Product
-            WHERE product_id = %s;
+        """Deletes a product.
+        
+        Args:
+            product_id (int): The ID of the product to delete.
+
+        Returns:
+            bool: True if the deletion was successful, False otherwise.
         """
+        query = "DELETE FROM Product WHERE product_id = %s;"
         return self._execute_query(query, (product_id,))
 
-    def _get_products_from_query(self, query: str, values: tuple = None) -> List[ProductData]:
-        """Helper function to fetch and process product data from a query."""
-        products = []
-        try:
-            cursor = self.db_connection.connection.cursor()
-            if values:
-                cursor.execute(query, values)
-            else:
-                cursor.execute(query)
-            product_list = cursor.fetchall()
-            cursor.close()
-            for product in product_list:
-                products.append(ProductData(*product))
-            return products
-        except Exception as e:
-            print(f"Error fetching products: {e}")
-            return []
+    def get_by_id(self, product_id: int) -> Optional[Dict]:
+        """Gets a product by ID.
+        
+        Args:
+            product_id (int): The ID of the product to retrieve.
 
-    def get_by_id(self, product_id: int) -> Optional[ProductData]:
-        """Gets a product by ID."""
+        Returns:
+            Optional[Dict]: The retrieved product as a dictionary, or None if not found.
+        """
         query = """
             SELECT product_name, description, price, quantity_available, category_id, seller_id
             FROM Product
             WHERE product_id = %s;
         """
-        products = self._get_products_from_query(query, (product_id,))
-        return products[0] if products else None  # Return None if no products found
+        products = self._get_products(query, (product_id,))
+        return products[0] if products else None
 
-    def get_all(self) -> List[ProductData]:
-        """Gets all products."""
-        query = """
-            SELECT product_name, description, price, quantity_available, category_id, seller_id
-            FROM Product;
+    def get_all(self) -> List[Dict]:
+        """Gets all products.
+        
+        Returns:
+            List[Dict]: A list of all products.
         """
-        return self._get_products_from_query(query)
+        query = "SELECT product_name, description, price, quantity_available, category_id, seller_id FROM Product;"
+        return self._get_products(query)
 
-    def get_by_name(self, product_name: str) -> List[ProductData]:
-        """Gets products by name (case-insensitive search)."""
+    def get_by_name(self, product_name: str) -> List[Dict]:
+        """Gets products by name (case-insensitive search).
+        
+        Args:
+            product_name (str): The name of the product to search for.
+
+        Returns:
+            List[Dict]: A list of products that match the search criteria.
+        """
         query = """
             SELECT product_name, description, price, quantity_available, category_id, seller_id
             FROM Product
-            WHERE LOWER(product_name) LIKE LOWER(%s);  -- Case-insensitive comparison
+            WHERE LOWER(product_name) LIKE LOWER(%s);
         """
-        return self._get_products_from_query(query, ("%" + product_name + "%",))
+        return self._get_products(query, ("%" + product_name + "%",))
 
-    def get_by_category(self, category_id: int) -> List[ProductData]:
-        """Gets products by category."""
+    def get_by_category(self, category_id: int) -> List[Dict]:
+        """Gets products by category.
+        
+        Args:
+            category_id (int): The ID of the category to retrieve products for.
+
+        Returns:
+            List[Dict]: A list of products in the specified category.
+        """
         query = """
             SELECT product_name, description, price, quantity_available, category_id, seller_id
             FROM Product
             WHERE category_id = %s;
         """
-        return self._get_products_from_query(query, (category_id,))
+        return self._get_products(query, (category_id,))
+
+    def get_by_price_ascendent(self) -> List[Dict]:
+        """Gets products ordered by price in ascending order.
+        
+        Returns:
+            List[Dict]: A list of products ordered by price in ascending order.
+        """
+        query = """
+            SELECT product_name, description, price, quantity_available, category_id, seller_id
+            FROM Product
+            ORDER BY price ASC;
+        """
+        return self._get_products(query)
+
+    def get_by_price_descendent(self) -> List[Dict]:
+        """Gets products ordered by price in descending order.
+        
+        Returns:
+            List[Dict]: A list of products ordered by price in descending order.
+        """
+        query = """
+            SELECT product_name, description, price, quantity_available, category_id, seller_id
+            FROM Product
+            ORDER BY price DESC;
+        """
+        return self._get_products(query)
+
+    def get_cheaper(self, max_price: float) -> List[Dict]:
+        """Gets products with a price lower than or equal to the given value.
+        
+        Args:
+            max_price (float): The maximum price to filter products by.
+
+        Returns:
+            List[Dict]: A list of products with a price lower than or equal to the given value.
+        """
+        query = """
+            SELECT product_name, description, price, quantity_available, category_id, seller_id
+            FROM Product
+            WHERE price <= %s;
+        """
+        return self._get_products(query, (max_price,))
+
+    def get_expensive(self, min_price: float) -> List[Dict]:
+        """Gets products with a price higher than or equal to the given value.
+        
+        Args:
+            min_price (float): The minimum price to filter products by.
+
+        Returns:
+            List[Dict]: A list of products with a price higher than or equal to the given value.
+        """
+        query = """
+            SELECT product_name, description, price, quantity_available, category_id, seller_id
+            FROM Product
+            WHERE price >= %s;
+        """
+        return self._get_products(query, (min_price,))

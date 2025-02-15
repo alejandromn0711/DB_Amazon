@@ -3,7 +3,7 @@ CREATE DATABASE amazon;
 -- Crear tablas independientes primero
 CREATE TABLE IF NOT EXISTS Category (
     category_id SERIAL PRIMARY KEY,
-    categoryName VARCHAR(255) NOT NULL,
+    category_name VARCHAR(255) NOT NULL,
     description TEXT
 );
 

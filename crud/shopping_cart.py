@@ -1,14 +1,13 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pydantic import BaseModel
 
-from PGDatabase_Connection import PostgresDatabaseConnection
+from connections import PostgresDatabaseConnection
 
 class ShoppingCartData(BaseModel):
     """Data structure for ShoppingCart."""
     customer_id: int    # Foreign key
 
 class ShoppingCartCRUD:
-
     def __init__(self):
         """Initialize the database connection."""
         self.db_connection = PostgresDatabaseConnection()
@@ -18,10 +17,7 @@ class ShoppingCartCRUD:
         """Execute a query on the database."""
         try:
             cursor = self.db_connection.connection.cursor()
-            if values:
-                cursor.execute(query, values)
-            else:
-                cursor.execute(query)
+            cursor.execute(query, values or ())
             self.db_connection.connection.commit()
             cursor.close()
             return True
@@ -30,70 +26,81 @@ class ShoppingCartCRUD:
             self.db_connection.connection.rollback()
             return False
 
-    def create(self, data: ShoppingCartData) -> Optional[int]:
-        """Creates a new shopping cart."""
+    def _get_shopping_cart(self, query: str, values: tuple = None) -> List[Dict]:
+        """Executes a SELECT query and returns shopping carts as a list of dictionaries."""
+        shopping_carts = []
+        try:
+            cursor = self.db_connection.connection.cursor()
+            cursor.execute(query, values or ())
+            for cart in cursor.fetchall():
+                shopping_carts.append({
+                    "shopping_cart_id": cart[0],
+                    "customer_id": cart[1]
+                })
+            cursor.close()
+            return shopping_carts
+        except Exception as e:
+            print(f"Error fetching shopping carts: {e}")
+            return []
+
+    def create(self, data: ShoppingCartData) -> int:
+        """Creates a new shopping cart and returns its ID."""
         query = """
-            INSERT INTO ShoppingCart (customer_id)
+            INSERT INTO shopping_cart (customer_id)
             VALUES (%s)
-            RETURNING shoppingCart_id;
+            RETURNING shopping_cart_id;
         """
         values = (data.customer_id,)
         try:
             cursor = self.db_connection.connection.cursor()
             cursor.execute(query, values)
-            shopping_cart_id = cursor.fetchone()[0]
+            result = cursor.fetchone()
             self.db_connection.connection.commit()
             cursor.close()
-            return shopping_cart_id
+
+            if result is None:
+                raise ValueError("Failed to retrieve shopping_cart_id after insertion.")
+
+            return result[0]
+
         except Exception as e:
             self.db_connection.connection.rollback()
             print(f"Error creating shopping cart: {e}")
-            return None
+            raise ValueError("Could not create shopping cart.")
 
-    def get_by_id(self, shopping_cart_id: int) -> Optional[ShoppingCartData]:
+    def get_by_id(self, shopping_cart_id: int) -> Optional[Dict]:
         """Gets a shopping cart by ID."""
         query = """
-            SELECT customer_id
-            FROM ShoppingCart
-            WHERE shoppingCart_id = %s;
+            SELECT shopping_cart_id, customer_id
+            FROM shopping_cart
+            WHERE shopping_cart_id = %s;
         """
-        try:
-            cursor = self.db_connection.connection.cursor()
-            cursor.execute(query, (shopping_cart_id,))
-            shopping_cart_data = cursor.fetchone()
-            cursor.close()
-            if shopping_cart_data:
-                return ShoppingCartData(*shopping_cart_data)
-            return None
-        except Exception as e:
-            print(f"Error getting shopping cart by ID: {e}")
-            return None
+        shopping_carts = self._get_shopping_cart(query, (shopping_cart_id,))
+        return shopping_carts[0] if shopping_carts else None
 
-    def get_all(self) -> List[ShoppingCartData]:
+    def get_all(self) -> List[Dict]:
         """Gets all shopping carts."""
         query = """
-            SELECT customer_id
-            FROM ShoppingCart;
+            SELECT shopping_cart_id, customer_id
+            FROM shopping_cart;
         """
-        shopping_carts = []
-        try:
-            cursor = self.db_connection.connection.cursor()
-            cursor.execute(query)
-            shopping_cart_list = cursor.fetchall()
-            cursor.close()
-            for shopping_cart in shopping_cart_list:
-                shopping_carts.append(ShoppingCartData(*shopping_cart))
-            return shopping_carts
-        except Exception as e:
-            print(f"Error getting all shopping carts: {e}")
-            return []
+        return self._get_shopping_cart(query)
+
+    def get_by_customer_id(self, customer_id: int) -> List[Dict]:
+        """Gets all shopping carts for a specific customer."""
+        query = """
+            SELECT shopping_cart_id, customer_id
+            FROM shopping_cart
+            WHERE customer_id = %s;
+        """
+        return self._get_shopping_cart(query, (customer_id,))
 
     def update(self, shopping_cart_id: int, data: ShoppingCartData) -> bool:
         """Updates a shopping cart."""
         query = """
-            UPDATE ShoppingCart
+            UPDATE shopping_cart
             SET customer_id = %s
-            WHERE shoppingCart_id = %s;
+            WHERE shopping_cart_id = %s;
         """
         values = (data.customer_id, shopping_cart_id)
         return self._execute_query(query, values)
@@ -101,7 +108,7 @@ class ShoppingCartCRUD:
     def delete(self, shopping_cart_id: int) -> bool:
         """Deletes a shopping cart."""
         query = """
-            DELETE FROM ShoppingCart
-            WHERE shoppingCart_id = %s;
+            DELETE FROM shopping_cart
+            WHERE shopping_cart_id = %s;
         """
         return self._execute_query(query, (shopping_cart_id,))

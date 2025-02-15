@@ -1,5 +1,5 @@
 from typing import List
-
+from datetime import date 
 from fastapi import APIRouter
 
 from crud.shipping import ShippingData, ShippingCRUD
@@ -31,3 +31,13 @@ def get_shipping_by_id(shipping_id: int):
 def get_all_shipping():
     """Gets all shipping entries."""
     return crud.get_all()
+
+@router.get("/shipping/get_by_shipping_company/{shipping_company}", response_model=List[ShippingData])
+def get_shipping_by_shipping_company(shipping_company: str):
+    """Gets all shipping entries."""
+    return crud.get_by_shipping_company(shipping_company)
+
+@router.get("/shipping/get_by_shipping_date/{shipping_date}", response_model=List[ShippingData])
+def get_shipping_by_shipping_date(shipping_date: date):
+    """Gets all shipping entries."""
+    return crud.get_by_shipping_date(shipping_date)
